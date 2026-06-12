@@ -63,6 +63,38 @@ Design and intent
 - Idempotency and visibility are expressed via file moves and journal entries rather than in-memory mutable state.
 - The monad stack is intentionally simple (ReaderT over IO) to keep the design transparent and easily testable.
 
+Typed Events and safer journaling
+- Motivation: the system records important lifecycle and result information to a journal (NDJSON). Historically, journal entries may be emitted as loosely structured JSON objects. Moving to a single, well-typed `Event` algebraic data type improves safety, clarity, and maintainability.
+- What "typed Event" means: define an explicit `Event` type in Haskell that enumerates the kinds of events the system emits. Each constructor captures the required fields for that event, and the type derives (or has custom) `ToJSON`/`FromJSON` instances for persisted NDJSON.
+- Example (illustrative):
+
+```haskell
+-- src/Autofhir/Types.hs (example)
+data Event
+  = EventChunkQueued { eChunkId :: Text, eTimestamp :: UTCTime }
+  | EventChunkStarted { eChunkId :: Text, eWorkerId :: Text, eTimestamp :: UTCTime }
+  | EventChunkSucceeded { eChunkId :: Text, eResult :: Value, eTimestamp :: UTCTime }
+  | EventChunkFailed { eChunkId :: Text, eError :: Text, eTimestamp :: UTCTime }
+  deriving (Show, Eq, Generic)
+
+instance ToJSON Event where
+  -- derive or implement a stable JSON shape, e.g. include a "kind" field and payload
+```
+
+- How it maps to journaling: each in-memory `Event` value is serialized to a single JSON object and appended (one-per-line) to `journal/journal.ndjson`. When reading the journal, parse each line into `Event` and then handle it deterministically.
+- Safety improvements:
+  - Compile-time guarantees: the shape and required fields of each event are encoded in the type system, reducing runtime decoding/shape errors.
+  - Explicit event kinds: it's harder to accidentally emit inconsistent or malformed journal entries.
+  - Easier refactoring: adding/removing event kinds forces you to handle those changes at compilation time.
+  - Simpler validation: validation of event payloads happens when constructing the typed `Event` rather than during ad-hoc JSON assembly.
+  - Better replayability and audits: typed events make it safer to replay journal entries, implement idempotent reconstructions, or use the journal as an event-sourced state if desired in the future.
+  - Clear upgrade/migration path: versioning strategies (e.g. `EventV1`, `EventV2`, or explicit "version" fields) can be applied systematically.
+
+- Operational notes:
+  - Keep the serialized JSON shape stable: prefer a top-level `kind` or `type` field plus a `payload` object. Document the schema for tool interoperability.
+  - When reading historical journal entries, fail fast and log errors rather than silently ignoring malformed lines.
+  - Tests: add property tests that round-trip `Event -> JSON -> Event` and unit tests for event-based transitions.
+
 Credits
 - This Haskell port preserves the design and intent of the original `autofhir` project. The upstream original project is available at:
 
