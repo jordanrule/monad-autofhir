@@ -1,0 +1,45 @@
+name: monad-autofhir
+version: 0.1.0.0
+github: ""
+license: MIT
+author: "autofhir port"
+maintainer: ""
+synopsis: "Haskell port of the autofhir orchestration tools using immutable state via monads"
+category: Web
+extra-source-files:
+  - README.md
+library:
+  source-dirs: src
+  exposed-modules:
+    - Autofhir.Types
+    - Autofhir.Env
+    - Autofhir.FS
+    - Autofhir.Proc
+    - Autofhir.Coordinator
+  ghc-options: -Wall
+  dependencies:
+    - base >= 4.9 && < 5
+    - aeson
+    - bytestring
+    - text
+    - directory
+    - filepath
+    - process
+    - async
+    - stm
+    - optparse-applicative
+    - time
+    - containers
+    - unordered-containers
+
+executables:
+  monad-autofhir:
+    main: Main.hs
+    source-dirs: app
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N
+    dependencies:
+      - monad-autofhir
+      - optparse-applicative
+
+tests: {}
+
