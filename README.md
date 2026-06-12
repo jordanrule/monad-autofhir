@@ -1,5 +1,9 @@
 # monad-autofhir
 
+Note on medical & business intent
+
+This project implements orchestration patterns for coordinating automated agents that perform tasks related to medical data and healthcare workflows. It is intended to enable safe, auditable automation for operational and business processes (tasking, batching, result collection, and journaling), not to provide clinical decision-making or direct patient care. Any clinical use should be paired with appropriate validation, human oversight, and compliance checks before deployment.
+
 
 Haskell MVP port of the `autofhir` orchestration tools.
 
