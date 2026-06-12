@@ -68,8 +68,6 @@ Credits
 
   https://github.com/jmandel/autofhir
 
-- Original project author: Jared Mandel (@jmandel). This port reimplements the orchestration ideas from that repository in Haskell for an MVP while preserving the on-disk layout and worker lifecycle semantics.
-
 License
 - This port is released under the MIT License. See `LICENSE`.
 
