@@ -73,5 +73,3 @@ Credits
 License
 - This port is released under the MIT License. See `LICENSE`.
 
-If you want me to add a precise GitHub link for the original author, provide the URL and I will update this README to include it.
-
