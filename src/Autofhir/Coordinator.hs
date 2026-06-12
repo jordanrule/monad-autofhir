@@ -16,6 +16,11 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy as BL
 import System.FilePath
 import System.Directory
+import Autofhir.Hash (sha256Value)
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Time.Clock
+import qualified Data.Set as Set
 
 -- | Coordinator: polls pending chunks and processes them with a pool of workers.
 coordinator :: Int -> AppM ()
@@ -49,6 +54,23 @@ runAppWorker q = do
             case mchunk of
               Nothing -> liftIO $ putStrLn $ "failed to parse chunk: " ++ runningFp
               Just chunk -> do
+                -- compute idempotency key from chunk payload and check seen set
+                let key = sha256Value (payload chunk)
+                seenVar <- asks envSeen
+                claimed <- liftIO $ atomically $ do
+                  seen <- readTVar seenVar
+                  if Set.member (T.unpack key) seen
+                    then return False
+                    else writeTVar seenVar (Set.insert (T.unpack key) seen) >> return True
+                if not claimed
+                  then do
+                    now <- liftIO getCurrentTime
+                    let ev = Event now "chunk-duplicate" (object ["chunkId" .= chunkId chunk, "key" .= key])
+                    appendJournal ev
+                    -- move duplicate to done with a short result
+                    _ <- moveToDone runningFp (String "duplicate-skip")
+                    liftIO $ putStrLn $ "Skipped duplicate " ++ runningFp
+                  else do
                 -- create a prompt file from chunk payload
                 let promptPath = envRoot env </> envRunId env </> "requests" </> takeFileName runningFp
                 liftIO $ createDirectoryIfMissing True (envRoot env </> envRunId env </> "requests")
@@ -59,6 +81,9 @@ runAppWorker q = do
                                   Just v -> v
                                   Nothing -> String "copilot-output"
                 _ <- moveToDone runningFp resultVal
+                now <- liftIO getCurrentTime
+                let ev = Event now "chunk-completed" (object ["chunkId" .= chunkId chunk])
+                appendJournal ev
                 liftIO $ putStrLn $ "Processed " ++ runningFp
             loop
   loop

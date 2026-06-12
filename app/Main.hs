@@ -4,6 +4,10 @@ import Autofhir.Env
 import Autofhir.Coordinator
 import Options.Applicative
 import Data.Semigroup ((<>))
+import Control.Concurrent.STM
+import Data.Set (Set)
+import qualified Data.Set as Set
+
 
 data Cmd = Cmd
   { runId :: FilePath
@@ -20,10 +24,12 @@ cmdParser = Cmd
 main :: IO ()
 main = do
   cmd <- execParser (info (cmdParser <**> helper) (fullDesc <> progDesc "monad-autofhir coordinator"))
+  seen <- newTVarIO Set.empty
   let env = AppEnv
             { envRoot = "."
             , envRunId = runId cmd
             , envCopilot = copilotPath cmd
+            , envSeen = seen
             }
   runApp env $ coordinator (concurrency cmd)
 

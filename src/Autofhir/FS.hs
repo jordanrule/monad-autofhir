@@ -21,6 +21,8 @@ import System.FilePath
 import Data.Aeson
 import qualified Data.ByteString.Lazy as BL
 import Data.Time.Clock
+import Control.Concurrent.STM
+import Data.Time.Clock
 
 runPath :: FilePath -> FilePath
 runPath root = root
@@ -79,11 +81,13 @@ moveToDone runningFp result = do
   appendJournal (JournalEntry now "chunk-done" result)
   return dest
 
-appendJournal :: JournalEntry -> AppM ()
-appendJournal je = do
+appendJournal :: Event -> AppM ()
+appendJournal ev = do
   env <- ask
   let base = envRoot env </> envRunId env
-  let jpath = base </> "journal" </> "journal.ndjson"
-  let line = encode je
+  let jdir = base </> "journal"
+  liftIO $ createDirectoryIfMissing True jdir
+  let jpath = jdir </> "journal.ndjson"
+  let line = encode ev
   liftIO $ BL.appendFile jpath (line <> "\n")
 

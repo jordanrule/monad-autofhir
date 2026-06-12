@@ -46,3 +46,17 @@ instance FromJSON JournalEntry where
 instance ToJSON JournalEntry where
   toJSON (JournalEntry ts t p) = object ["timestamp" .= ts, "type" .= t, "payload" .= p]
 
+-- Event is the domain-level journal entry used for auditing and idempotency.
+data Event = Event
+  { evTimestamp :: UTCTime
+  , evName :: Text
+  , evPayload :: Value
+  } deriving (Show, Eq)
+
+instance FromJSON Event where
+  parseJSON = withObject "Event" $ \o ->
+    Event <$> o .: "timestamp" <*> o .: "name" <*> o .: "payload"
+
+instance ToJSON Event where
+  toJSON (Event ts n p) = object ["timestamp" .= ts, "name" .= n, "payload" .= p]
+

@@ -8,11 +8,16 @@ module Autofhir.Env
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Concurrent.STM
+import Data.Set (Set)
+import qualified Data.Set as Set
+
 
 data AppEnv = AppEnv
   { envRoot :: FilePath
   , envRunId :: FilePath
   , envCopilot :: FilePath
+  , envSeen :: TVar (Set String)
   }
 
 newtype AppM a = AppM { unApp :: ReaderT AppEnv IO a }
